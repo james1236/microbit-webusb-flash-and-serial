@@ -4,6 +4,10 @@ A minimal tool for flashing a micro:bit v2 over WebUSB and communicating using S
 # Usage
 Run `make`, or manually run `python3 -m http.server 8080`
 
+Don't run the HTML file directly as it won't be able to access MICROBIT.hex. 
+
+Instead, visit the page at [localhost:8080/webusb.html](http://localhost:8080/webusb.html), 
+
 # Compatibility
 | Device | Notes |
 |---|---|
