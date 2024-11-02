@@ -1,5 +1,5 @@
 # micro:bit WebUSB Flash and Serial
-A minimal tool for flashing a micro:bit v2 over WebUSB and communicating using Serial.
+A minimal tool for flashing a micro:bit v2 over WebUSB and communicating using Serial. Fails for large hex files.
 
 # Usage
 Run `make`, or manually run `python3 -m http.server 8080`
