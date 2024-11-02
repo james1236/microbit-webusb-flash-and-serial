@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flash micro:bit & Serial</title>
+
+    <!-- Dependencies -->
+    <script src="partial-flashing.js"></script>
+    <script type="text/javascript" defer src="dap.umd.js"></script>
+</head>
+
+<body>
+    <button id="flash" onclick="getHexAndFlash()">Flash micro:bit</button>
+    <progress id="progress" value="0" max="100"></progress>
+    <button id="serial" onclick="doSerial()">Connect to Serial</button>
+    <br>
+
+    <pre id="serialData" 
+        style="border: 1px solid #ccc; font-face: Monospace; height: 200px; overflow: auto">Serial Output</pre>
+
+    <input type="text" id="serialInput" disabled="true" placeholder="Serial Input" 
+        style="width: calc(100% - 110px); margin: 1em 0; border: 1px solid #ccc; font-face: Monospace;"
+        onkeypress="if(event.keyCode == 13) { serialWrite(this.value); this.value = ''; }">
+
+    <button id="ctrl-c" onclick="serialWrite('\x03')" style="width: 100px">Send Ctrl-C</button>
+
+    <script>
+/**
+ * WebUSB flashing for the micro:bit.
+ *
+ * Adapted from: https://github.com/bbcmicrobit/PythonEditor/blob/20129a16e14c69cf7889c9cc5fc51a3064ad1947/js/partial-flashing.js
+ * and:          https://github.com/bbcmicrobit/PythonEditor/blob/20129a16e14c69cf7889c9cc5fc51a3064ad1947/js/python-main.js
+ * Which was adapted from:
+ * https://github.com/microsoft/pxt-microbit/blob/master/editor/flash.ts (Latest Microsoft implementation)
+ */
+
+function getHexAndFlash() {
+    // Get the example hex file from the server at /exampleHexFile
+    fetch('MICROBIT.hex')
+        .then(response => response.arrayBuffer())
+        .then(hexBuffer => {
+            connectAndFlash(hexBuffer);
+        });
+}
+
+function connectAndFlash(hexFile) {
+    closeSerial();
+
+    console.log("Connecting WebUSB");
+    PartialFlashing.connectDapAsync()
+        .then(function () {
+
+            console.log("Flashing");
+            updateProgress = function (progress, longFlash) {
+                console.log("Progress: " + progress + "%, longFlash: " + longFlash);
+                document.getElementById('progress').value = progress * 100;
+                if (progress == 1) {
+                    console.log("Flashing complete");
+                }
+            };
+
+            // PartialFlashing.fullFlashAsync(window.dapwrapper, hexFile, updateProgress);
+            tryFlash(window.dapwrapper, hexFile, updateProgress)
+                .then(() => {
+                    console.log("Flashing complete");
+                })
+                .catch((err) => {
+                    console.error("Flashing failed: " + err);
+                });
+        });
+}
+
+async function tryFlash(dapwrapper, hexBuffer, updateProgress) {
+    try {
+        let p = Promise.resolve()
+            .then(() => {
+                // Reset micro:bit to ensure interface responds correctly.
+                PartialFlashingUtils.log("Begin reset");
+                return dapwrapper.reset(true)
+                    .catch(e => {
+                        PartialFlashingUtils.log("Retrying reset");
+                        return dapwrapper.reconnectAsync(false)
+                            .then(() => dapwrapper.reset(true));
+                    });
+            });
+
+        let timeout = new Promise((resolve, reject) => {
+            setTimeout(() => {
+                resolve("timeout");
+            }, 1000)
+        })
+
+        // Use race to timeout the reset.
+        let ret = await Promise.race([p, timeout])
+        .then((result) => {
+            if(result === "timeout") {
+                PartialFlashingUtils.log("Resetting micro:bit timed out");
+            }
+            PartialFlashingUtils.log("Begin Flashing");
+            return PartialFlashing.fullFlashAsync(dapwrapper, hexBuffer, updateProgress);
+        })
+        .finally(() => {
+            return dapwrapper.disconnectAsync();
+        });
+        return ret;
+    } catch (err) {
+        return Promise.reject(err);
+    }
+}
+
+function doSerial() {
+    closeSerial();
+
+    document.getElementById('serialData').textContent = 'Setting up serial connection...';
+
+    console.log('Connecting to micro:bit');
+    PartialFlashing.connectDapAsync()
+        .then(function () {
+            console.log('Setting Up Serial Terminal');
+        })
+        .then(function () {
+            console.log('disconnectAsync()');
+            return window.dapwrapper.disconnectAsync();
+        })
+        .then(function () {
+            console.log('daplink.connect()');
+            return window.dapwrapper.daplink.connect();
+        })
+        .then(function () {
+            console.log('daplink.setSerialBaudrate()');
+            return window.dapwrapper.daplink.setSerialBaudrate(115200);
+        })
+        .then(function () {
+            console.log('daplink.startSerialRead()');
+            window.dapwrapper.daplink.startSerialRead(1);
+            // lib.init(setupHterm);
+
+            document.getElementById('serialData').textContent = '';
+            document.getElementById('serialInput').disabled = false;
+
+            //Constantly log serial
+            window.dapwrapper.daplink.on(DAPjs.DAPLink.EVENT_SERIAL_DATA, function (data) {
+                console.log(data);
+                document.getElementById('serialData').textContent += data;
+                document.getElementById('serialData').scrollTop = document.getElementById('serialData').scrollHeight;
+            });
+        });
+}
+
+function closeSerial() {
+    document.getElementById('serialData').textContent = '';
+    document.getElementById('serialInput').disabled = true;
+    if (window.dapwrapper) {
+        window.dapwrapper.daplink.stopSerialRead();
+        window.dapwrapper.daplink.removeAllListeners(DAPjs.DAPLink.EVENT_SERIAL_DATA);
+        window.dapwrapper.daplink.disconnect();
+    }
+}
+
+function serialWrite(data) {
+    window.dapwrapper.daplink.serialWrite(data);
+}
+
+//When user navigates away from page, close serial connection (tying to stop desync requiring replug of micro:bit)
+window.onbeforeunload = function () {
+    closeSerial();
+};
+
+document.addEventListener('keydown', function (event) {
+    if (event.ctrlKey && event.key === 'c') {
+        serialWrite('\x03');
+    }
+});
+
+    </script>
+</body>
+</html>
