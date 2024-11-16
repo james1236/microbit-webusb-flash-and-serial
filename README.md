@@ -21,4 +21,4 @@ Instead, visit the page at [localhost:8080/webusb.html](http://localhost:8080/we
 # Dependencies
 The following required files have been put in the repository:
 * [dap.umd.js](https://github.com/ARMmbed/dapjs) (DAP.js is a JavaScript interface to CMSIS-DAP, enabling access to Arm Microcontrollers using Node.js or in the browser using WebUSB)
-* [partial-flashing.js](https://github.com/bbcmicrobit/PythonEditor/blob/master/js/partial-flashing.js) (Taken from [bbcmicrobit/PythonEditor](https://github.com/bbcmicrobit/PythonEditor), which is an old version of a micropython programming tool for micro:bit. It was the simplest open-source WebUSB micro:bit flasher I could find)
+* [partial-flashing.js](https://github.com/bbcmicrobit/PythonEditor/blob/master/js/partial-flashing.js) (Taken from [bbcmicrobit/PythonEditor](https://github.com/bbcmicrobit/PythonEditor), which is an old version of a micropython programming tool for micro:bit. It was the simplest open-source WebUSB micro:bit flasher I could find. I didn't realize, but the newer version of the python editor is [also open source](https://github.com/microbit-foundation/python-editor-v3))
