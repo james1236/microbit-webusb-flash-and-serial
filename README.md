@@ -1,4 +1,8 @@
 # micro:bit WebUSB Flash and Serial
+
+> [!NOTE]
+> The new [microbit-connection](https://www.npmjs.com/package/@microbit/microbit-connection) library is probably better than this repo
+
 A minimal tool for flashing a micro:bit v2 over WebUSB and communicating using Serial.
 
 Created as I couldn't find an open-source micro:bit WebUSB flasher that wasn't mixed with other code from a bigger website.
